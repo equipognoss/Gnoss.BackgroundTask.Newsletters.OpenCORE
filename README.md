@@ -1,0 +1,1 @@
+# Gnoss.BackgroundTask.Newsletters.Open
