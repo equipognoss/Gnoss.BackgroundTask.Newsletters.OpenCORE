@@ -9,7 +9,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 newsletters:
-    image: newsletters
+    image: gnoss/newsletters
     env_file: .env
     environment:
 virtuosoConnectionString: ${virtuosoConnectionString}
