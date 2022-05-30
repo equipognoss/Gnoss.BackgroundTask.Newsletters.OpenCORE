@@ -1,3 +1,5 @@
+![](https://content.gnoss.ws/imagenes/proyectos/personalizacion/7e72bf14-28b9-4beb-82f8-e32a3b49d9d3/cms/logognossazulprincipal.png)
+
 # Gnoss.BackgroundTask.Newsletters.OpenCORE
 
 Aplicación de segundo plano que se encarga de enviar a todos los usuarios de una comunidad los emails de una newsletter.
