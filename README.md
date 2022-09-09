@@ -2,6 +2,8 @@
 
 # Gnoss.BackgroundTask.Newsletters.OpenCORE
 
+![](https://github.com/equipognoss/Gnoss.BackgroundTask.Newsletters.OpenCORE/workflows/BuildNewsLetter/badge.svg)
+
 Aplicación de segundo plano que se encarga de enviar a todos los usuarios de una comunidad los emails de una newsletter.
 
 Este servicio escucha la cola ColaNewsletter. La Web envía a esta cola un evento cada vez que un administrador envía una newsletter a todos los usuarios de la comunidad. Cuando este servicio recibe el evento, inserta en la tabla ColaCorreo una fila con el contenido de la newsletter por cada usuario al que se debe enviar la newsletter, para que sea finalmente el servicio MailService el que envíe el email de cada usuario. 
