@@ -14,7 +14,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 newsletters:
-    image: gnoss/newsletters
+    image: gnoss/gnoss.backgroundtask.newsletters.opencore
     env_file: .env
     environment:
 virtuosoConnectionString: ${virtuosoConnectionString}
