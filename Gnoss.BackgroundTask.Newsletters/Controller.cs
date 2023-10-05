@@ -202,7 +202,10 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                 EntityContextBASE entityContextBASE = scope.ServiceProvider.GetRequiredService<EntityContextBASE>();
                 LoggingService loggingService = scope.ServiceProvider.GetRequiredService<LoggingService>();
                 VirtuosoAD virtuosoAD = scope.ServiceProvider.GetRequiredService<VirtuosoAD>();
+                RedisCacheWrapper redisCacheWrapper = scope.ServiceProvider.GetRequiredService<RedisCacheWrapper>();
+                ConfigService configService = scope.ServiceProvider.GetRequiredService<ConfigService>();
                 IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication = scope.ServiceProvider.GetRequiredService<IServicesUtilVirtuosoAndReplication>();
+                ComprobarTraza("Newsletters", entityContext, loggingService, redisCacheWrapper, configService, servicesUtilVirtuosoAndReplication);
                 try
                 {
                     ComprobarCancelacionHilo();
@@ -218,8 +221,6 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 
                         documentoEnvioNewsLetter = null;
 
-                        servicesUtilVirtuosoAndReplication.ConexionAfinidad = "";
-
                         ControladorConexiones.CerrarConexiones(false);
 
                     }
@@ -230,6 +231,10 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                 {
                     loggingService.GuardarLogError(ex);
                     return true;
+                }
+                finally
+                {
+                    GuardarTraza(loggingService);
                 }
             }
         }
