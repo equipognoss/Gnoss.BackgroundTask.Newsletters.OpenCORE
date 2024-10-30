@@ -424,7 +424,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                                             paramGeneralDS = filaParamGeneral;
                                         }
 
-                                        UtilIdiomas utilIdiomas = new UtilIdiomas(idioma, loggingService, entityContext, mConfigService);
+                                        UtilIdiomas utilIdiomas = new UtilIdiomas(idioma, loggingService, entityContext, mConfigService, mRedisCacheWrapper);
                                         string URLCOMUNIDAD = "http://www.gnoss.com";
                                         string NOMBRECOMUNIDAD = "www.gnoss.com";
                                         string POLITICAPRIVACIDAD = "http://www.gnoss.com/politica-privacidad";
@@ -829,7 +829,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
             pie = mGestionNotificaciones.ListaFormatosCorreo(idioma)["pieNewsletter"];
 
 
-            if (pie.Contains("<#URLCOMUNIDAD#>") || pie.Contains("<#NOMBRECOMUNIDAD#>") || pie.Contains("<#POLITICAPRIVACIDAD#>") || pie.Contains("<#CONDICIONESUSO#>"))
+            if (pie.Contains("<#URLCOMUNIDAD#>") || pie.Contains("<#NOMBRECOMUNIDAD#>") || pie.Contains("<#POLITICAPRIVACIDAD#>") || pie.Contains("<#CONDICIONESUSO#>") || pie.Contains("<#URCONNOMBRECOMUNIDAD#>") || pie.Contains("<#SECCIONNOTIFICACIONES#>"))
             {
                 GestorParametroGeneral paramGeneralDS = null;
                 if (filaParamGeneral != null)
@@ -837,12 +837,19 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                     paramGeneralDS = filaParamGeneral;
                 }
 
-                UtilIdiomas utilIdiomas = new UtilIdiomas(idioma, loggingService, entityContext, mConfigService);
+                UtilIdiomas utilIdiomas = new UtilIdiomas(idioma, loggingService, entityContext, mConfigService, mRedisCacheWrapper);
+                string urlBaseProyecto = UtilCadenas.ObtenerTextoDeIdioma(filaProyecto.URLPropia, idioma, idioma);
+                string nombrecortoComunidad = "";
+                if (pProyectoID != ProyectoAD.MetaProyecto)
+                {
+                    nombrecortoComunidad = filaProyecto.NombreCorto;
+                }
                 string URLCOMUNIDAD = "http://www.gnoss.com";
                 string NOMBRECOMUNIDAD = "www.gnoss.com";
                 string POLITICAPRIVACIDAD = "http://www.gnoss.com/politica-privacidad";
                 string CONDICIONESUSO = "http://www.gnoss.com/condiciones-uso";
-
+                string URCONNOMBRECOMUNIDAD = utilIdiomas.GetText("METABUSCADOR", "TODASCOMUNIDADES");
+                string SECCIONNOTIFICACIONES = "<a href=\"" + urlBaseProyecto + "/editar-perfil-notificacion\">" + utilIdiomas.GetText("SUSCRIPCIONES", "SECCIONNOTIFICACIONPERFIL") + "</a>";
 
                 if (filaProyecto != null)
                 {
@@ -853,20 +860,31 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 
                     if (idioma != "es")
                     {
-                        URLCOMUNIDAD += "/" + idioma;
-                        POLITICAPRIVACIDAD += "/" + idioma;
-                        CONDICIONESUSO += "/" + idioma;
+                        URLCOMUNIDAD = $"{URLCOMUNIDAD}/{idioma}";
+                        POLITICAPRIVACIDAD = $"{POLITICAPRIVACIDAD}/{idioma}";
+                        CONDICIONESUSO = $"{CONDICIONESUSO}/{idioma}";
+                        urlBaseProyecto = $"{urlBaseProyecto}/{idioma}";
                     }
 
-                    URLCOMUNIDAD += "/" + utilIdiomas.GetText("URLSEM", "COMUNIDAD") + "/" + filaProyecto.NombreCorto;
-                    POLITICAPRIVACIDAD += "/" + utilIdiomas.GetText("URLSEM", "COMUNIDAD") + "/" + filaProyecto.NombreCorto + "/" + utilIdiomas.GetText("URLSEM", "POLITICAPRIVACIDAD");
-                    CONDICIONESUSO += "/" + utilIdiomas.GetText("URLSEM", "COMUNIDAD") + "/" + filaProyecto.NombreCorto + "/" + utilIdiomas.GetText("URLSEM", "CONDICIONESUSO");
+                    URLCOMUNIDAD = $"{URLCOMUNIDAD}/{utilIdiomas.GetText("URLSEM", "COMUNIDAD")}/{filaProyecto.NombreCorto}";
+                    POLITICAPRIVACIDAD = $"{POLITICAPRIVACIDAD}/{utilIdiomas.GetText("URLSEM", "COMUNIDAD")}/{filaProyecto.NombreCorto}/{utilIdiomas.GetText("URLSEM", "POLITICAPRIVACIDAD")}";
+                    CONDICIONESUSO = $"{CONDICIONESUSO}/{utilIdiomas.GetText("URLSEM", "COMUNIDAD")}/{filaProyecto.NombreCorto}/{utilIdiomas.GetText("URLSEM", "CONDICIONESUSO")}";
+                }
+
+                if (!string.IsNullOrEmpty(nombrecortoComunidad))
+                {
+                    string nombreProyecto = UtilCadenas.ObtenerTextoDeIdioma(filaProyecto.Nombre, idioma, idioma);
+                    URCONNOMBRECOMUNIDAD = $"<a href=\"{urlBaseProyecto}\">{nombreProyecto}</a>";
+                    SECCIONNOTIFICACIONES = $"<a href=\"{urlBaseProyecto}/{utilIdiomas.GetText("URLSEM", "ADMINISTRARSUSCRIPCIONCOMUNIDAD")}\">{utilIdiomas.GetText("SUSCRIPCIONES", "SECCIONSUSCRIBETECOMUNIDAD", nombreProyecto)}</a>";
                 }
 
                 pie = pie.Replace("<#NOMBRECOMUNIDAD#>", NOMBRECOMUNIDAD);
                 pie = pie.Replace("<#URLCOMUNIDAD#>", URLCOMUNIDAD);
                 pie = pie.Replace("<#POLITICAPRIVACIDAD#>", POLITICAPRIVACIDAD);
                 pie = pie.Replace("<#CONDICIONESUSO#>", CONDICIONESUSO);
+                pie = pie.Replace("<#URCONNOMBRECOMUNIDAD#>", URCONNOMBRECOMUNIDAD);
+                pie = pie.Replace("<#SECCIONNOTIFICACIONES#>", SECCIONNOTIFICACIONES);
+                
             }
         }
 
