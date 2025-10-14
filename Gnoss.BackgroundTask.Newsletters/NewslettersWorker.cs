@@ -1,3 +1,4 @@
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 using Es.Riam.Gnoss.Servicios;
 using Es.Riam.Gnoss.Util.Configuracion;
 using Es.Riam.Gnoss.Win.ServicioEnviosMasivos;
@@ -14,20 +15,22 @@ namespace Gnoss.BackgroundTask.Newsletters
 {
     public class NewslettersWorker : Worker
     {
-        private readonly ILogger<NewslettersWorker> _logger;
         private readonly ConfigService _configService;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
-        public NewslettersWorker(ILogger<NewslettersWorker> logger, ConfigService configService, IServiceScopeFactory scopeFactory)
+        public NewslettersWorker(ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<NewslettersWorker> logger, ILoggerFactory loggerFactory)
             : base(logger, scopeFactory)
         {
-            _logger = logger;
             _configService = configService;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         protected override List<ControladorServicioGnoss> ObtenerControladores()
         {
             List<ControladorServicioGnoss> controladores = new List<ControladorServicioGnoss>();
-            controladores.Add(new Controller(ScopedFactory, _configService));
+            controladores.Add(new Controller(ScopedFactory, _configService, mLoggerFactory.CreateLogger<Controller>(), mLoggerFactory));
             return controladores;
         }
     }
