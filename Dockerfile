@@ -9,13 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl
 
 WORKDIR /app
 
-COPY Gnoss.BackgroundTask.Newsletters/*.csproj ./
-
-RUN dotnet restore
-
 COPY . ./
 
-RUN dotnet publish Gnoss.BackgroundTask.Newsletters/Gnoss.BackgroundTask.Newsletters.csproj -c Release -o out
+RUN dotnet restore Gnoss.BackgroundTask.Newsletters.OpenCORE/Gnoss.BackgroundTask.Newsletters/Gnoss.BackgroundTask.Newsletters.csproj
+
+RUN dotnet publish Gnoss.BackgroundTask.Newsletters.OpenCORE/Gnoss.BackgroundTask.Newsletters/Gnoss.BackgroundTask.Newsletters.csproj -c Release -o out
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
