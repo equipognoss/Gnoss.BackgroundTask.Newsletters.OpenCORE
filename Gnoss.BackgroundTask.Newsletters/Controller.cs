@@ -1,16 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Es.Riam.Gnoss.Util.General;
-using System.IO;
-using Es.Riam.Gnoss.Logica.Notificacion;
 using Es.Riam.Gnoss.Elementos.Notificacion;
 using System.Threading;
-using System.Reflection;
-using System.Globalization;
-using Es.Riam.Gnoss.AD.Notificacion;
 using Es.Riam.Util;
-using System.Net.Mail;
 using Es.Riam.Gnoss.AD.ServiciosGenerales;
 using Es.Riam.Gnoss.Logica.ParametroAplicacion;
 using Es.Riam.Gnoss.Logica.ServiciosGenerales;
@@ -22,8 +15,6 @@ using Es.Riam.Gnoss.Logica.Documentacion;
 using Es.Riam.Gnoss.Logica.Identidad;
 using System.Data;
 using Es.Riam.Gnoss.Logica.BASE_BD;
-using Es.Riam.Gnoss.Web.Controles.ParametroAplicacionGBD;
-using Es.Riam.Gnoss.Elementos.ParametroAplicacion;
 using System.Linq;
 using Es.Riam.Gnoss.Elementos.ParametroGeneralDSEspacio;
 using Es.Riam.Gnoss.Web.Controles.ParametroGeneralDSName;
@@ -32,7 +23,6 @@ using Es.Riam.Gnoss.AD.EncapsuladoDatos;
 using Es.Riam.Gnoss.AD.EntityModel;
 using Es.Riam.Gnoss.RabbitMQ;
 using System.Diagnostics;
-using Newtonsoft.Json;
 using Es.Riam.Gnoss.AD.EntityModel.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Es.Riam.Gnoss.Util.Configuracion;
@@ -42,7 +32,7 @@ using Es.Riam.Gnoss.CL;
 using Es.Riam.AbstractsOpen;
 using Es.Riam.Interfaces.InterfacesOpen;
 using Microsoft.Extensions.Logging;
-using Es.Riam.Gnoss.Elementos.Suscripcion;
+using System.Text.Json;
 
 namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 {
@@ -57,7 +47,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 
         #region Estaticos
 
-        private static object OBJETO_BLOQUEO_ENVIO_NEWSLETTER = new object();
+        private static readonly object OBJETO_BLOQUEO_ENVIO_NEWSLETTER = new object();
 
         #endregion
 
@@ -75,8 +65,9 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 
         private readonly Dictionary<Guid, ConfiguracionEnvioCorreo> mListaConfiguracionEnvioCorreo;
 
-        private ILogger<Controller> mlogger;
-        private ILoggerFactory mLoggerFactory;
+        private readonly ILogger<Controller> mlogger;
+        private readonly ILoggerFactory mLoggerFactory;
+        private RabbitMQClient mRabbitMQClient;
 
         #endregion
 
@@ -109,7 +100,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
         /// Realiza el envio de las notificaciones pendientes de enviar 
         /// y escribe en el log una entrada indicando el resultado de la operaci�n
         /// </summary>
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             RealizarMantenimientoRabbitMQ(loggingService);
             RealizarMantenimientoBD();
@@ -135,11 +126,6 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                         try
                         {
                             ComprobarCancelacionHilo();
-
-                            if (mReiniciarLecturaRabbit)
-                            {
-                                RealizarMantenimientoRabbitMQ(loggingService);
-                            }
 
                             //(Re)Carga los datos de la BD referentes a notificaciones
                             CargarDatos(entityContext, loggingService, servicesUtilVirtuosoAndReplication);
@@ -172,11 +158,12 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                 RabbitMQClient.ReceivedDelegate funcionProcesarItem = new RabbitMQClient.ReceivedDelegate(ProcesarItem);
                 RabbitMQClient.ShutDownDelegate funcionShutDown = new RabbitMQClient.ShutDownDelegate(OnShutDown);
 
-                RabbitMQClient rabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_NEWSLETTER, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_NEWSLETTER);
+                mRabbitMQClient?.Dispose();
+                mRabbitMQClient = new RabbitMQClient(RabbitMQClient.BD_SERVICIOS_WIN, COLA_NEWSLETTER, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, EXCHANGE, COLA_NEWSLETTER);
 
                 try
                 {
-                    rabbitMQClient.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
+                    mRabbitMQClient.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
                     mReiniciarLecturaRabbit = false;
                 }
                 catch (Exception ex)
@@ -207,7 +194,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
 
                     if (!string.IsNullOrEmpty(pFila))
                     {
-                        AD.EntityModel.Models.Documentacion.DocumentoEnvioNewsLetter documentoEnvioNewsLetter = JsonConvert.DeserializeObject<AD.EntityModel.Models.Documentacion.DocumentoEnvioNewsLetter>(pFila);
+                        AD.EntityModel.Models.Documentacion.DocumentoEnvioNewsLetter documentoEnvioNewsLetter = JsonSerializer.Deserialize<AD.EntityModel.Models.Documentacion.DocumentoEnvioNewsLetter>(pFila);
 
                         ProcesarFilaDeCola(documentoEnvioNewsLetter, loggingService, entityContext, entityContextBASE, servicesUtilVirtuosoAndReplication, availableServices);
 
@@ -330,7 +317,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                         if (!string.IsNullOrEmpty(cuerpo))
                         {
                             int correoID = baseComCN.InsertarCorreo(parametrosCorreo, listaEmailsDestinatarios, docNews.Titulo, cuerpo, esHtml, mascaraFrom, availableServices);
-                            listaCorreosID.Add(JsonConvert.SerializeObject(correoID));
+                            listaCorreosID.Add(JsonSerializer.Serialize(correoID));
                         }
 
                         docNews.EnvioRealizado = true;
@@ -506,7 +493,7 @@ namespace Es.Riam.Gnoss.Win.ServicioEnviosMasivos
                 string POLITICAPRIVACIDAD = "http://www.gnoss.com/politica-privacidad";
                 string CONDICIONESUSO = "http://www.gnoss.com/condiciones-uso";
                 string URCONNOMBRECOMUNIDAD = utilIdiomas.GetText("METABUSCADOR", "TODASCOMUNIDADES");
-                string SECCIONNOTIFICACIONES = $"<a href=\"{urlBaseProyecto}/editar-perfil-notificacion\">{utilIdiomas.GetText("SUSCRIPCIONES", "SECCIONNOTIFICACIONPERFIL")}</a>";
+                string SECCIONNOTIFICACIONES = $"<a href=\"{urlBaseProyecto}/editar-perfil\">{utilIdiomas.GetText("SUSCRIPCIONES", "SECCIONNOTIFICACIONPERFIL")}</a>";
 
                 if (filaProyecto != null)
                 {
